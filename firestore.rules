@@ -1,0 +1,116 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: transactions
+// Document ID: auto-generated
+// Fields:
+//   - amount: number (required) - The amount of the transaction.
+//   - category: string (required) - The category (e.g., Food, Salary, Rent).
+//   - date: string (required, format: date-time) - The date of the transaction.
+//   - note: string (optional) - Optional note for the transaction.
+//   - status: string (required, enum: ["Paid", "Unpaid"]) - Payment status.
+//   - type: string (required, enum: ["Income", "Expense", "Lent", "Borrowed"]) - Type of transaction.
+//   - receiptUrl: string (optional) - URL to the receipt image in Firebase Storage.
+//   - userId: string (required) - The ID of the user who owns this transaction.
+//
+// Collection: users
+// Document ID: userId
+// Fields:
+//   - email: string (required) - User's email.
+//   - displayName: string (optional) - User's display name.
+//   - photoURL: string (optional) - User's photo URL.
+//   - monthlyBudget: number (optional) - User's monthly budget limit.
+//
+// Collection: notes
+// Document ID: auto-generated
+// Fields:
+//   - title: string (required) - The title of the note.
+//   - content: string (required) - The content of the note.
+//   - date: string (required, format: date-time) - The date the note was created.
+//   - userId: string (required) - The ID of the user who owns this note.
+//   - isImportant: boolean (required) - Whether the note is marked as important.
+//   - type: string (required, enum: ["general", "debt", "reminder"]) - The type of note.
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "mdrakib11005511@gmail.com" && request.auth.token.email_verified == true));
+    }
+    
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['amount', 'category', 'date', 'status', 'type', 'userId']) &&
+             data.amount is number &&
+             data.category is string && data.category.size() > 0 && data.category.size() < 100 &&
+             data.date is string &&
+             data.status in ['Paid', 'Unpaid'] &&
+             data.type in ['Income', 'Expense', 'Lent', 'Borrowed'] &&
+             data.userId == request.auth.uid &&
+             (!('note' in data) || (data.note is string && data.note.size() < 500)) &&
+             (!('receiptUrl' in data) || (data.receiptUrl is string && data.receiptUrl.size() < 1000));
+    }
+    
+    function isValidUser(data) {
+      return data.keys().hasAll(['email']) &&
+             data.email is string &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 100)) &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() < 1000)) &&
+             (!('monthlyBudget' in data) || (data.monthlyBudget is number && data.monthlyBudget >= 0));
+    }
+
+    function isValidNote(data) {
+      return data.keys().hasAll(['title', 'content', 'date', 'userId', 'isImportant', 'type']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.content is string && data.content.size() < 2000 &&
+             data.date is string &&
+             data.userId == request.auth.uid &&
+             data.isImportant is bool &&
+             data.type in ['general', 'debt', 'reminder'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidTransaction(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidTransaction(request.resource.data);
+      allow delete: if isAuthenticated() && isDocOwner();
+    }
+
+    match /notes/{noteId} {
+      allow read: if isAuthenticated() && (isAdmin() || resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidNote(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || isDocOwner()) && isValidNote(request.resource.data);
+      allow delete: if isAuthenticated() && (isAdmin() || isDocOwner());
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction (Income, Expense, Lent, Borrowed).",
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number", "description": "The amount of the transaction." },
+        "category": { "type": "string", "description": "The category (e.g., Food, Salary, Rent)." },
+        "date": { "type": "string", "format": "date-time", "description": "The date of the transaction." },
+        "note": { "type": "string", "description": "Optional note for the transaction." },
+        "status": { "type": "string", "enum": ["Paid", "Unpaid"], "description": "Payment status." },
+        "type": { "type": "string", "enum": ["Income", "Expense", "Lent", "Borrowed"], "description": "Type of transaction." },
+        "receiptUrl": { "type": "string", "description": "URL to the receipt image in Firebase Storage." },
+        "userId": { "type": "string", "description": "The ID of the user who owns this transaction." }
+      },
+      "required": ["amount", "category", "date", "status", "type", "userId"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile data.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "monthlyBudget": { "type": "number", "description": "User's monthly budget limit." }
+      },
+      "required": ["email"]
+    },
+    "Note": {
+      "title": "Note",
+      "description": "A personal note or reminder.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "The title of the note." },
+        "content": { "type": "string", "description": "The content of the note." },
+        "date": { "type": "string", "format": "date-time", "description": "The date the note was created." },
+        "userId": { "type": "string", "description": "The ID of the user who owns this note." },
+        "isImportant": { "type": "boolean", "description": "Whether the note is marked as important." },
+        "type": { "type": "string", "enum": ["general", "debt", "reminder"], "description": "The type of note." }
+      },
+      "required": ["title", "content", "date", "userId", "isImportant", "type"]
+    }
+  },
+  "firestore": {
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Collection of all transactions."
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles."
+    },
+    "/notes/{noteId}": {
+      "schema": "Note",
+      "description": "Collection of all notes."
+    }
+  }
+}

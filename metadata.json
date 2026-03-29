@@ -1,0 +1,5 @@
+{
+  "name": "FinTrack Pro",
+  "description": "Premium iOS-optimized Personal Finance & Expense Tracker with Firebase integration.",
+  "requestFramePermissions": ["camera"]
+}
